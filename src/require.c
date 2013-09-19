@@ -77,7 +77,7 @@ static mrb_value
 mrb_require_load_rb_str(mrb_state *mrb, mrb_value self)
 {
   char *path_ptr = NULL;
-  char tmpname[] = "tmp.XXXXXXXX";
+  char *tmpname = "tmp.XXXXXXXX";
   mode_t mask;
   FILE *tmpfp = NULL;
   int fd = -1, ret;
@@ -88,6 +88,19 @@ mrb_require_load_rb_str(mrb_state *mrb, mrb_value self)
     path = mrb_str_new_cstr(mrb, "-");
   }
   path_ptr = mrb_str_to_cstr(mrb, path);
+
+  struct RClass *scd = mrb_class_get(mrb, "Dir");
+  struct RClass *scf = mrb_class_get(mrb, "File");
+  if (scd && scf) {
+      mrb_value rcdir = mrb_obj_value(scd);
+      mrb_value rcfile = mrb_obj_value(scf);
+      mrb_value dir = mrb_funcall(mrb, rcdir, "tmpdir", 0);
+      if (mrb_string_p(dir) && mrb_bool(mrb_funcall(mrb, rcfile, "exist?", 1, dir))) {
+          mrb_value tmp_path = mrb_funcall(mrb, rcfile, "join",
+                                           2, dir, mrb_str_new_cstr(mrb, tmpname));
+          tmpname = mrb_str_to_cstr(mrb, tmp_path);
+      }
+  }
 
   mask = umask(077);
   fd = mkstemp(tmpname);
